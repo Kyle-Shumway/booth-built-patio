@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booth Built Patio Cover Designer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Booth Built Patio Cover Designer</h1>
+            <p>Design your custom patio cover and get instant pricing</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="design-area">
+                <div class="canvas-container">
+                    <canvas id="designCanvas" width="600" height="400"></canvas>
+                    <div class="canvas-instructions">
+                        <div id="modeInstructions">Click to place posts, then drag to create shade area</div>
+                        <div class="mode-toggle">
+                            <button id="postMode" class="mode-btn active">Post Mode</button>
+                            <button id="shadeMode" class="mode-btn">Shade Mode</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <h3>Cover Type</h3>
+                        <div class="radio-group">
+                            <label>
+                                <input type="radio" name="coverType" value="lattice" checked>
+                                Lattice Cover
+                            </label>
+                            <label>
+                                <input type="radio" name="coverType" value="aluminum">
+                                Aluminum Sheet
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <h3>Cover Angle</h3>
+                        <div class="angle-control">
+                            <input type="range" id="angleSlider" min="0" max="45" value="15" step="1">
+                            <span id="angleValue">15°</span>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <h3>Actions</h3>
+                        <button id="clearBtn">Clear All Posts</button>
+                        <button id="resetBtn">Reset Design</button>
+                        <button id="view3dBtn" class="view-3d-btn">Generate 3D View</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="cost-panel">
+                <h3>Cost Breakdown</h3>
+                <div class="cost-details">
+                    <div class="cost-item">
+                        <span>Steel Posts:</span>
+                        <span id="postCost">$0.00</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>Cover Material:</span>
+                        <span id="coverCost">$0.00</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>Hardware:</span>
+                        <span id="hardwareCost">$0.00</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>Installation:</span>
+                        <span id="installCost">$0.00</span>
+                    </div>
+                    <div class="cost-total">
+                        <strong>
+                            <span>Total:</span>
+                            <span id="totalCost">$0.00</span>
+                        </strong>
+                    </div>
+                </div>
+                
+                <div class="specifications">
+                    <h4>Specifications</h4>
+                    <div class="spec-item">
+                        <span>Posts:</span>
+                        <span id="postCount">0</span>
+                    </div>
+                    <div class="spec-item">
+                        <span>Coverage Area:</span>
+                        <span id="coverageArea">0 sq ft</span>
+                    </div>
+                    <div class="spec-item">
+                        <span>Cover Angle:</span>
+                        <span id="specAngle">15°</span>
+                    </div>
+                    <div class="spec-item">
+                        <span>Cantilever:</span>
+                        <span id="cantileverSpan">0 ft</span>
+                    </div>
+                    <div class="spec-item" id="postSizeSpec">
+                        <span>Post Size:</span>
+                        <span id="postSize">4x4</span>
+                    </div>
+                    <div class="structural-warning" id="structuralWarning" style="display: none;">
+                        ⚠️ Span exceeds safe limits - additional posts recommended
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 3D View Modal -->
+    <div id="modal3d" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>3D Preview - Patio Cover Structure</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <canvas id="canvas3d" width="600" height="400"></canvas>
+                <div class="view-controls">
+                    <button id="rotateLeft">↻ Rotate Left</button>
+                    <button id="rotateRight">Rotate Right ↺</button>
+                    <button id="topView">Top View</button>
+                    <button id="sideView">Side View</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
