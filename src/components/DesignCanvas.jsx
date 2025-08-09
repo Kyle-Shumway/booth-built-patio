@@ -16,6 +16,7 @@ const DesignCanvas = () => {
     mode,
     constraints,
     postConstraints,
+    satelliteImageUrl,
     addPost,
     removePost,
     movePost,
