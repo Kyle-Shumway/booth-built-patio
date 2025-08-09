@@ -28,10 +28,6 @@ export const useStore = create((set, get) => ({
   show3D: false,
   rotation3D: 30,
 
-  // Address and satellite overlay
-  address: '',
-  coordinates: null, // { lat, lng }
-  satelliteImageUrl: null,
 
   // Constraints
   constraints: {
@@ -251,58 +247,6 @@ export const useStore = create((set, get) => ({
 
   setPostExtension: (extension) => set({ postExtension: extension }),
 
-  // Address and satellite actions
-  setAddress: (address) => set({ address }),
-  setCoordinates: (coordinates) => set({ coordinates }),
-  setSatelliteImageUrl: (url) => set({ satelliteImageUrl: url }),
-
-  // Geocode address and fetch satellite image using free services
-  geocodeAddress: async (address) => {
-    const state = get();
-    set({ address });
-
-    try {
-      // Use Nominatim (OpenStreetMap) for free geocoding
-      const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
-      const geocodeResponse = await fetch(geocodeUrl, {
-        headers: {
-          'User-Agent': 'BoothBuiltPatioDesigner/1.0'
-        }
-      });
-      const geocodeData = await geocodeResponse.json();
-
-      if (geocodeData.length === 0) {
-        throw new Error('Address not found');
-      }
-
-      const coordinates = {
-        lat: parseFloat(geocodeData[0].lat),
-        lng: parseFloat(geocodeData[0].lon)
-      };
-      set({ coordinates });
-
-      // Generate satellite tile URL using Esri World Imagery (free)
-      const zoom = 18; // Good zoom for property level
-      const tileX = Math.floor(((coordinates.lng + 180) / 360) * Math.pow(2, zoom));
-      const tileY = Math.floor((1 - Math.log(Math.tan((coordinates.lat * Math.PI) / 180) + 1 / Math.cos((coordinates.lat * Math.PI) / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
-      
-      // Use multiple tiles for better coverage
-      const tileUrls = [];
-      for (let x = -1; x <= 1; x++) {
-        for (let y = -1; y <= 1; y++) {
-          tileUrls.push(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY + y}/${tileX + x}`);
-        }
-      }
-      
-      // Use the center tile for now
-      const satelliteUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY}/${tileX}`;
-      set({ satelliteImageUrl: satelliteUrl });
-
-    } catch (error) {
-      console.error('Error geocoding address:', error);
-      set({ coordinates: null, satelliteImageUrl: null });
-    }
-  },
 
   setMode: (mode) => set({ mode }),
 

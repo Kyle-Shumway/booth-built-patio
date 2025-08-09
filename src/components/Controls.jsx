@@ -5,11 +5,8 @@ const Controls = () => {
   const {
     coverType,
     angle,
-    address,
     setCoverType,
     setAngle,
-    setAddress,
-    geocodeAddress,
     clearAll,
     reset,
     show3DView
@@ -24,35 +21,8 @@ const Controls = () => {
     setAngle(newAngle);
   };
 
-  const handleAddressChange = (event) => {
-    setAddress(event.target.value);
-  };
-
-  const handleAddressSubmit = async (event) => {
-    event.preventDefault();
-    if (address.trim()) {
-      await geocodeAddress(address.trim());
-    }
-  };
-
   return (
     <div className="controls">
-      <div className="control-group">
-        <h3>Property Address</h3>
-        <form onSubmit={handleAddressSubmit} className="address-form">
-          <input
-            type="text"
-            value={address}
-            onChange={handleAddressChange}
-            placeholder="Enter your address for satellite view"
-            className="address-input"
-          />
-          <button type="submit" className="btn-secondary">
-            Load Aerial View
-          </button>
-        </form>
-      </div>
-
       <div className="control-group">
         <h3>Cover Type</h3>
         <div className="radio-group">

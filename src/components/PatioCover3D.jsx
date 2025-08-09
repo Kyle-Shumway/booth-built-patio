@@ -18,7 +18,7 @@ const PatioCover3D = () => {
   }, [posts]);
 
   const pergolaStructure = useMemo(() => {
-    if (!shadeArea || posts.length < 4) return null;
+    if (!shadeArea || posts.length < 2) return null;
     
     const posts3DPositions = posts.map(post => convertTo3D(post.x, post.y));
     const baseFrameHeight = 2; // Standard pergola height at low end
@@ -129,11 +129,11 @@ const PatioCover3D = () => {
 
 
       {/* Pergola Structure */}
-      {pergolaStructure && posts.length >= 4 && (
+      {pergolaStructure && posts.length >= 2 && (
         <group>
           {/* Support beams connecting post tops */}
           <group>
-            {pergolaStructure.posts.length >= 4 && (
+            {pergolaStructure.posts.length >= 2 && (
               <>
                 {/* Create 2 main support beams positioned at post locations */}
                 {(() => {
