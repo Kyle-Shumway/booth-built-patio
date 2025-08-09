@@ -1,8 +1,29 @@
-import React, { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { Suspense, useRef, useEffect } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Text } from '@react-three/drei';
 import { useStore } from '../store/useStore';
 import PatioCover3D from './PatioCover3D';
+
+const CameraController = () => {
+  const { rotation3D } = useStore();
+  const controlsRef = useRef();
+  
+  useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.setAzimuthalAngle(rotation3D * Math.PI / 180);
+      controlsRef.current.update();
+    }
+  }, [rotation3D]);
+  
+  return (
+    <OrbitControls 
+      ref={controlsRef}
+      enablePan={true} 
+      enableZoom={true} 
+      enableRotate={true}
+    />
+  );
+};
 
 const Modal3D = () => {
   const {
@@ -62,7 +83,7 @@ const Modal3D = () => {
                   cellColor="#666666" 
                   sectionColor="#333333" 
                 />
-                <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
+                <CameraController />
               </Suspense>
             </Canvas>
           </div>

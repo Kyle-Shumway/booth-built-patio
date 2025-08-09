@@ -23,6 +23,7 @@ export const useStore = create((set, get) => ({
   shadeArea: null,
   coverType: 'lattice',
   angle: 15,
+  postExtension: 6, // inches - how much post extends above the frame
   mode: 'post', // 'post' or 'shade'
   show3D: false,
   rotation3D: 30,
@@ -242,6 +243,8 @@ export const useStore = create((set, get) => ({
   setCoverType: (type) => set({ coverType: type }),
 
   setAngle: (angle) => set({ angle }),
+
+  setPostExtension: (extension) => set({ postExtension: extension }),
 
   setMode: (mode) => set({ mode }),
 

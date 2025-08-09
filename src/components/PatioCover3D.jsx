@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useStore } from '../store/useStore';
 
 const PatioCover3D = () => {
-  const { posts, shadeArea, coverType, angle, getRequiredPostSize } = useStore();
+  const { posts, shadeArea, coverType, angle, postExtension, getRequiredPostSize } = useStore();
   
   const postSize = getRequiredPostSize();
   
@@ -17,27 +17,61 @@ const PatioCover3D = () => {
     return posts.map(post => convertTo3D(post.x, post.y));
   }, [posts]);
 
-  const shadeArea3D = useMemo(() => {
-    if (!shadeArea) return null;
+  const pergolaStructure = useMemo(() => {
+    if (!shadeArea || posts.length < 4) return null;
     
-    const corners = [
+    const posts3DPositions = posts.map(post => convertTo3D(post.x, post.y));
+    const baseFrameHeight = 2; // Standard pergola height at low end
+    
+    // Calculate shade area bounds for slope calculation
+    const shadeCorners = [
       convertTo3D(shadeArea.x, shadeArea.y),
       convertTo3D(shadeArea.x + shadeArea.width, shadeArea.y),
       convertTo3D(shadeArea.x + shadeArea.width, shadeArea.y + shadeArea.height),
       convertTo3D(shadeArea.x, shadeArea.y + shadeArea.height)
     ];
     
+    const shadeWidth = Math.abs(shadeArea.width * 0.02);
+    const shadeDepth = Math.abs(shadeArea.height * 0.02);
+    const shadeCenter = [
+      (shadeArea.x + shadeArea.width/2 - 300) * 0.02,
+      0, // Will be calculated based on angle
+      (shadeArea.y + shadeArea.height/2 - 200) * 0.02
+    ];
+    
+    // Determine slope direction - let's slope along the Z axis (depth)
+    const minZ = Math.min(...shadeCorners.map(c => c[2]));
+    const maxZ = Math.max(...shadeCorners.map(c => c[2]));
+    const slopeDistance = maxZ - minZ;
+    const heightDifference = Math.tan(angle * Math.PI / 180) * slopeDistance;
+    
+    // Calculate height for each post based on its Z position
+    const postsWithHeights = posts3DPositions.map(postPos => {
+      const zRatio = (postPos[2] - minZ) / slopeDistance;
+      const postHeight = baseFrameHeight + (heightDifference * zRatio);
+      return {
+        position: postPos,
+        frameHeight: postHeight
+      };
+    });
+    
     return {
-      corners,
-      center: [
-        (corners[0][0] + corners[2][0]) / 2,
-        2 + Math.sin(angle * Math.PI / 180) * 0.5, // Height varies with angle
-        (corners[0][2] + corners[2][2]) / 2
-      ],
-      width: Math.abs(corners[1][0] - corners[0][0]),
-      depth: Math.abs(corners[2][2] - corners[0][2])
+      posts: postsWithHeights,
+      baseFrameHeight,
+      heightDifference,
+      slopeDirection: { minZ, maxZ, slopeDistance },
+      shadeArea: {
+        corners: shadeCorners,
+        width: shadeWidth,
+        depth: shadeDepth,
+        center: [
+          shadeCenter[0],
+          baseFrameHeight + (heightDifference / 2), // Average height at center
+          shadeCenter[2]
+        ]
+      }
     };
-  }, [shadeArea, angle]);
+  }, [shadeArea, angle, posts]);
 
   // Get post color based on size
   const getPostColor = () => {
@@ -70,127 +104,242 @@ const PatioCover3D = () => {
 
   return (
     <group>
-      {/* Ground Posts */}
-      {posts3D.map((position, index) => (
-        <group key={index} position={position}>
-          {/* Post */}
-          <mesh position={[0, 1, 0]}>
-            <boxGeometry args={[0.2, 2, 0.2]} />
-            <meshStandardMaterial color={getPostColor()} />
-          </mesh>
-          
-          {/* Post Number Label */}
-          <mesh position={[0, 2.3, 0]}>
-            <sphereGeometry args={[0.15]} />
-            <meshStandardMaterial color="white" />
-          </mesh>
-          
-          {/* Post foundation (buried part) */}
-          <mesh position={[0, -0.5, 0]}>
-            <cylinderGeometry args={[0.3, 0.3, 1]} />
-            <meshStandardMaterial color="#8B4513" />
-          </mesh>
-        </group>
-      ))}
+      {/* Posts extending through frame */}
+      {(pergolaStructure ? pergolaStructure.posts : posts3D.map(pos => ({ position: pos, frameHeight: 2 }))).map((postData, index) => {
+        const frameHeight = postData.frameHeight;
+        const postExtensionMeters = postExtension * 0.0254; // Convert inches to meters
+        const totalPostHeight = frameHeight + postExtensionMeters;
+        
+        return (
+          <group key={index} position={postData.position}>
+            {/* Main post from ground to above frame */}
+            <mesh position={[0, totalPostHeight / 2, 0]}>
+              <boxGeometry args={[0.2, totalPostHeight, 0.2]} />
+              <meshStandardMaterial color={getPostColor()} />
+            </mesh>
+            
+            {/* Post foundation (buried part) */}
+            <mesh position={[0, -0.5, 0]}>
+              <cylinderGeometry args={[0.3, 0.3, 1]} />
+              <meshStandardMaterial color="#8B4513" />
+            </mesh>
+          </group>
+        );
+      })}
 
-      {/* Shade Cover */}
-      {shadeArea3D && (
+
+      {/* Pergola Structure */}
+      {pergolaStructure && posts.length >= 4 && (
         <group>
-          {/* Main cover surface */}
-          <mesh position={shadeArea3D.center}>
-            <planeGeometry args={[shadeArea3D.width, shadeArea3D.depth]} />
-            <meshStandardMaterial {...getCoverMaterial()} side={2} />
-          </mesh>
-          
-          {/* Lattice pattern overlay */}
-          {coverType === 'lattice' && (
-            <group position={shadeArea3D.center}>
-              {/* Vertical slats */}
-              {Array.from({ length: Math.floor(shadeArea3D.width * 10) }, (_, i) => (
+          {/* Beams connecting posts at their angled frame heights */}
+          <group>
+            {pergolaStructure.posts.length >= 4 && (
+              <>
+                {/* Connect posts in pairs to form rectangular frame */}
+                {Array.from({ length: Math.ceil(pergolaStructure.posts.length / 2) }, (_, pairIndex) => {
+                  const startIndex = pairIndex * 2;
+                  const endIndex = Math.min(startIndex + 1, pergolaStructure.posts.length - 1);
+                  if (startIndex >= pergolaStructure.posts.length) return null;
+                  
+                  const startPost = pergolaStructure.posts[startIndex];
+                  const endPost = pergolaStructure.posts[endIndex];
+                  
+                  const startTop = [startPost.position[0], startPost.frameHeight, startPost.position[2]];
+                  const endTop = [endPost.position[0], endPost.frameHeight, endPost.position[2]];
+                  
+                  const beamLength = Math.sqrt(
+                    Math.pow(endTop[0] - startTop[0], 2) + 
+                    Math.pow(endTop[1] - startTop[1], 2) +
+                    Math.pow(endTop[2] - startTop[2], 2)
+                  );
+                  
+                  const beamCenter = [
+                    (startTop[0] + endTop[0]) / 2,
+                    (startTop[1] + endTop[1]) / 2,
+                    (startTop[2] + endTop[2]) / 2
+                  ];
+                  
+                  // Calculate rotation for angled beam
+                  const beamRotationY = Math.atan2(endTop[2] - startTop[2], endTop[0] - startTop[0]);
+                  const horizontalDistance = Math.sqrt(Math.pow(endTop[0] - startTop[0], 2) + Math.pow(endTop[2] - startTop[2], 2));
+                  const beamRotationZ = Math.atan2(endTop[1] - startTop[1], horizontalDistance);
+                  
+                  return (
+                    <mesh 
+                      key={`beam-${pairIndex}`}
+                      position={beamCenter}
+                      rotation={[0, beamRotationY, beamRotationZ]}
+                    >
+                      <boxGeometry args={[beamLength, 0.1, 0.15]} />
+                      <meshStandardMaterial color={getPostColor()} />
+                    </mesh>
+                  );
+                })}
+
+                {/* Cross beams connecting opposite corners */}
+                {pergolaStructure.posts.length >= 4 && Array.from({ length: 2 }, (_, crossIndex) => {
+                  const startIndex = crossIndex;
+                  const endIndex = crossIndex + 2;
+                  if (endIndex >= pergolaStructure.posts.length) return null;
+                  
+                  const startPost = pergolaStructure.posts[startIndex];
+                  const endPost = pergolaStructure.posts[endIndex];
+                  
+                  const startTop = [startPost.position[0], startPost.frameHeight, startPost.position[2]];
+                  const endTop = [endPost.position[0], endPost.frameHeight, endPost.position[2]];
+                  
+                  const beamLength = Math.sqrt(
+                    Math.pow(endTop[0] - startTop[0], 2) + 
+                    Math.pow(endTop[1] - startTop[1], 2) +
+                    Math.pow(endTop[2] - startTop[2], 2)
+                  );
+                  
+                  const beamCenter = [
+                    (startTop[0] + endTop[0]) / 2,
+                    (startTop[1] + endTop[1]) / 2,
+                    (startTop[2] + endTop[2]) / 2
+                  ];
+                  
+                  const beamRotationY = Math.atan2(endTop[2] - startTop[2], endTop[0] - startTop[0]);
+                  const horizontalDistance = Math.sqrt(Math.pow(endTop[0] - startTop[0], 2) + Math.pow(endTop[2] - startTop[2], 2));
+                  const beamRotationZ = Math.atan2(endTop[1] - startTop[1], horizontalDistance);
+                  
+                  return (
+                    <mesh 
+                      key={`cross-beam-${crossIndex}`}
+                      position={beamCenter}
+                      rotation={[0, beamRotationY, beamRotationZ]}
+                    >
+                      <boxGeometry args={[beamLength, 0.1, 0.15]} />
+                      <meshStandardMaterial color={getPostColor()} />
+                    </mesh>
+                  );
+                })}
+              </>
+            )}
+          </group>
+
+          {/* Rafters spanning across angled beams */}
+          <group>
+            {pergolaStructure.shadeArea && (
+              <>
+                {/* Calculate rafter positions across the shade area, following the slope */}
+                {Array.from({ length: Math.floor(pergolaStructure.shadeArea.depth / 0.4) + 1 }, (_, i) => {
+                  const rafterZ = pergolaStructure.shadeArea.corners[0][2] + (i * 0.4);
+                  
+                  // Calculate the height at this Z position based on the slope
+                  const { minZ, maxZ, slopeDistance } = pergolaStructure.slopeDirection;
+                  const zRatio = (rafterZ - minZ) / slopeDistance;
+                  const rafterHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * zRatio) + 0.05;
+                  
+                  return (
+                    <mesh 
+                      key={`rafter-${i}`}
+                      position={[
+                        pergolaStructure.shadeArea.center[0],
+                        rafterHeight,
+                        rafterZ
+                      ]}
+                      rotation={[0, 0, 0]} // Rafters are level, sitting on angled beams
+                    >
+                      <boxGeometry args={[pergolaStructure.shadeArea.width, 0.08, 0.12]} />
+                      <meshStandardMaterial color={getPostColor()} />
+                    </mesh>
+                  );
+                })}
+              </>
+            )}
+          </group>
+
+          {/* Shade cover on top of angled rafters */}
+          {pergolaStructure.shadeArea && (
+            <group>
+              {coverType === 'lattice' ? (
+                // Lattice: slats following the angled structure
+                <group>
+                  {/* Vertical lattice slats (span width, follow angle) */}
+                  {Array.from({ length: Math.floor(pergolaStructure.shadeArea.width * 4) + 1 }, (_, i) => {
+                    const xPos = pergolaStructure.shadeArea.center[0] - pergolaStructure.shadeArea.width/2 + (i * pergolaStructure.shadeArea.width / Math.floor(pergolaStructure.shadeArea.width * 4));
+                    
+                    // Calculate start and end heights for this vertical slat
+                    const { minZ, maxZ, slopeDistance } = pergolaStructure.slopeDirection;
+                    const startZ = pergolaStructure.shadeArea.corners[0][2];
+                    const endZ = pergolaStructure.shadeArea.corners[2][2];
+                    const centerZ = (startZ + endZ) / 2;
+                    
+                    const startHeight = pergolaStructure.baseFrameHeight + 0.15;
+                    const endHeight = pergolaStructure.baseFrameHeight + pergolaStructure.heightDifference + 0.15;
+                    const centerHeight = (startHeight + endHeight) / 2;
+                    
+                    const slatLength = Math.sqrt(
+                      Math.pow(pergolaStructure.shadeArea.depth, 2) + 
+                      Math.pow(pergolaStructure.heightDifference, 2)
+                    );
+                    
+                    const slatAngle = Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth);
+                    
+                    return (
+                      <mesh 
+                        key={`lattice-v-${i}`} 
+                        position={[xPos, centerHeight, centerZ]}
+                        rotation={[slatAngle, 0, 0]}
+                      >
+                        <boxGeometry args={[0.03, 0.03, slatLength]} />
+                        <meshStandardMaterial color="#689F38" />
+                      </mesh>
+                    );
+                  })}
+                  
+                  {/* Horizontal lattice slats (level, at varying heights) */}
+                  {Array.from({ length: Math.floor(pergolaStructure.shadeArea.depth * 4) + 1 }, (_, i) => {
+                    const slatZ = pergolaStructure.shadeArea.corners[0][2] + (i * pergolaStructure.shadeArea.depth / Math.floor(pergolaStructure.shadeArea.depth * 4));
+                    
+                    // Calculate height at this Z position
+                    const { minZ, maxZ, slopeDistance } = pergolaStructure.slopeDirection;
+                    const zRatio = (slatZ - minZ) / slopeDistance;
+                    const slatHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * zRatio) + 0.18;
+                    
+                    return (
+                      <mesh 
+                        key={`lattice-h-${i}`} 
+                        position={[
+                          pergolaStructure.shadeArea.center[0], 
+                          slatHeight,
+                          slatZ
+                        ]}
+                      >
+                        <boxGeometry args={[pergolaStructure.shadeArea.width, 0.03, 0.03]} />
+                        <meshStandardMaterial color="#689F38" />
+                      </mesh>
+                    );
+                  })}
+                </group>
+              ) : (
+                // Aluminum: angled solid surface
                 <mesh 
-                  key={`v-${i}`} 
                   position={[
-                    -shadeArea3D.width/2 + (i * 0.1), 
-                    0.02, 
+                    pergolaStructure.shadeArea.center[0],
+                    pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference / 2) + 0.15,
+                    pergolaStructure.shadeArea.center[2]
+                  ]}
+                  rotation={[
+                    Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth),
+                    0,
                     0
                   ]}
                 >
-                  <boxGeometry args={[0.02, 0.02, shadeArea3D.depth]} />
-                  <meshStandardMaterial color="#689F38" />
+                  <planeGeometry args={[
+                    pergolaStructure.shadeArea.width, 
+                    Math.sqrt(
+                      Math.pow(pergolaStructure.shadeArea.depth, 2) + 
+                      Math.pow(pergolaStructure.heightDifference, 2)
+                    )
+                  ]} />
+                  <meshStandardMaterial {...getCoverMaterial()} side={2} />
                 </mesh>
-              ))}
-              
-              {/* Horizontal slats */}
-              {Array.from({ length: Math.floor(shadeArea3D.depth * 10) }, (_, i) => (
-                <mesh 
-                  key={`h-${i}`} 
-                  position={[
-                    0, 
-                    0.01, 
-                    -shadeArea3D.depth/2 + (i * 0.1)
-                  ]}
-                >
-                  <boxGeometry args={[shadeArea3D.width, 0.02, 0.02]} />
-                  <meshStandardMaterial color="#689F38" />
-                </mesh>
-              ))}
+              )}
             </group>
           )}
-          
-          {/* Support beams from posts to cover */}
-          {posts3D.map((postPos, index) => {
-            const beamEnd = [
-              postPos[0],
-              shadeArea3D.center[1],
-              postPos[2]
-            ];
-            
-            const beamLength = Math.sqrt(
-              Math.pow(beamEnd[0] - postPos[0], 2) + 
-              Math.pow(beamEnd[1] - (postPos[1] + 2), 2) + 
-              Math.pow(beamEnd[2] - postPos[2], 2)
-            );
-            
-            const midPoint = [
-              (postPos[0] + beamEnd[0]) / 2,
-              (postPos[1] + 2 + beamEnd[1]) / 2,
-              (postPos[2] + beamEnd[2]) / 2
-            ];
-            
-            return (
-              <mesh key={`beam-${index}`} position={midPoint}>
-                <cylinderGeometry args={[0.05, 0.05, beamLength]} />
-                <meshStandardMaterial color={getPostColor()} />
-              </mesh>
-            );
-          })}
-          
-          {/* Frame around the cover */}
-          <group position={shadeArea3D.center}>
-            {/* Front edge */}
-            <mesh position={[0, 0.03, -shadeArea3D.depth/2]}>
-              <boxGeometry args={[shadeArea3D.width, 0.1, 0.05]} />
-              <meshStandardMaterial color={getPostColor()} />
-            </mesh>
-            
-            {/* Back edge */}
-            <mesh position={[0, 0.03, shadeArea3D.depth/2]}>
-              <boxGeometry args={[shadeArea3D.width, 0.1, 0.05]} />
-              <meshStandardMaterial color={getPostColor()} />
-            </mesh>
-            
-            {/* Left edge */}
-            <mesh position={[-shadeArea3D.width/2, 0.03, 0]}>
-              <boxGeometry args={[0.05, 0.1, shadeArea3D.depth]} />
-              <meshStandardMaterial color={getPostColor()} />
-            </mesh>
-            
-            {/* Right edge */}
-            <mesh position={[shadeArea3D.width/2, 0.03, 0]}>
-              <boxGeometry args={[0.05, 0.1, shadeArea3D.depth]} />
-              <meshStandardMaterial color={getPostColor()} />
-            </mesh>
-          </group>
         </group>
       )}
     </group>
