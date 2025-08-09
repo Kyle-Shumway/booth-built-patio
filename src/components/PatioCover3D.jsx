@@ -131,43 +131,87 @@ const PatioCover3D = () => {
       {/* Pergola Structure */}
       {pergolaStructure && posts.length >= 4 && (
         <group>
-          {/* Main support beams running lengthwise and sitting on post tops */}
+          {/* Support beams connecting post tops */}
           <group>
             {pergolaStructure.posts.length >= 4 && (
               <>
-                {/* Create 2 main support beams that run the length (depth) and sit on posts */}
-                {Array.from({ length: 2 }, (_, beamIndex) => {
-                  // Position beams at left and right sides of shade area
-                  const beamXRatio = beamIndex; // 0 for left beam, 1 for right beam  
-                  const beamX = pergolaStructure.shadeArea.center[0] - pergolaStructure.shadeArea.width/2 + (beamXRatio * pergolaStructure.shadeArea.width);
+                {/* Connect posts in pairs with angled support beams */}
+                {Array.from({ length: Math.ceil(pergolaStructure.posts.length / 2) }, (_, pairIndex) => {
+                  const startIndex = pairIndex * 2;
+                  const endIndex = startIndex + 1;
+                  if (startIndex >= pergolaStructure.posts.length || endIndex >= pergolaStructure.posts.length) return null;
                   
-                  // Calculate start and end points along the depth (following the slope)
-                  const startZ = pergolaStructure.shadeArea.corners[0][2];
-                  const endZ = pergolaStructure.shadeArea.corners[2][2];
-                  const centerZ = (startZ + endZ) / 2;
+                  const startPost = pergolaStructure.posts[startIndex];
+                  const endPost = pergolaStructure.posts[endIndex];
                   
-                  // Calculate heights at start and end positions
-                  const { minZ, slopeDistance } = pergolaStructure.slopeDirection;
-                  const startZRatio = (startZ - minZ) / slopeDistance;
-                  const endZRatio = (endZ - minZ) / slopeDistance;
-                  const startHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * startZRatio);
-                  const endHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * endZRatio);
-                  const centerHeight = (startHeight + endHeight) / 2;
+                  // Connect the tops of the posts
+                  const startTop = [startPost.position[0], startPost.frameHeight, startPost.position[2]];
+                  const endTop = [endPost.position[0], endPost.frameHeight, endPost.position[2]];
                   
-                  // Calculate beam length and rotation
                   const beamLength = Math.sqrt(
-                    Math.pow(pergolaStructure.shadeArea.depth, 2) + 
-                    Math.pow(pergolaStructure.heightDifference, 2)
+                    Math.pow(endTop[0] - startTop[0], 2) + 
+                    Math.pow(endTop[1] - startTop[1], 2) +
+                    Math.pow(endTop[2] - startTop[2], 2)
                   );
-                  const beamAngle = Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth);
+                  
+                  const beamCenter = [
+                    (startTop[0] + endTop[0]) / 2,
+                    (startTop[1] + endTop[1]) / 2,
+                    (startTop[2] + endTop[2]) / 2
+                  ];
+                  
+                  // Calculate rotation for angled beam connecting posts
+                  const beamRotationY = Math.atan2(endTop[2] - startTop[2], endTop[0] - startTop[0]);
+                  const horizontalDistance = Math.sqrt(Math.pow(endTop[0] - startTop[0], 2) + Math.pow(endTop[2] - startTop[2], 2));
+                  const beamRotationZ = Math.atan2(endTop[1] - startTop[1], horizontalDistance);
                   
                   return (
                     <mesh 
-                      key={`main-beam-${beamIndex}`}
-                      position={[beamX, centerHeight, centerZ]}
-                      rotation={[beamAngle, 0, 0]}
+                      key={`support-beam-${pairIndex}`}
+                      position={beamCenter}
+                      rotation={[0, beamRotationY, beamRotationZ]}
                     >
-                      <boxGeometry args={[0.2, 0.12, beamLength]} />
+                      <boxGeometry args={[beamLength, 0.15, 0.2]} />
+                      <meshStandardMaterial color={getPostColor()} />
+                    </mesh>
+                  );
+                })}
+
+                {/* Cross beams connecting the other pair of posts */}
+                {pergolaStructure.posts.length >= 4 && Array.from({ length: Math.ceil(pergolaStructure.posts.length / 2) - 1 }, (_, crossIndex) => {
+                  const startIndex = crossIndex;
+                  const endIndex = crossIndex + 2;
+                  if (endIndex >= pergolaStructure.posts.length) return null;
+                  
+                  const startPost = pergolaStructure.posts[startIndex];
+                  const endPost = pergolaStructure.posts[endIndex];
+                  
+                  const startTop = [startPost.position[0], startPost.frameHeight, startPost.position[2]];
+                  const endTop = [endPost.position[0], endPost.frameHeight, endPost.position[2]];
+                  
+                  const beamLength = Math.sqrt(
+                    Math.pow(endTop[0] - startTop[0], 2) + 
+                    Math.pow(endTop[1] - startTop[1], 2) +
+                    Math.pow(endTop[2] - startTop[2], 2)
+                  );
+                  
+                  const beamCenter = [
+                    (startTop[0] + endTop[0]) / 2,
+                    (startTop[1] + endTop[1]) / 2,
+                    (startTop[2] + endTop[2]) / 2
+                  ];
+                  
+                  const beamRotationY = Math.atan2(endTop[2] - startTop[2], endTop[0] - startTop[0]);
+                  const horizontalDistance = Math.sqrt(Math.pow(endTop[0] - startTop[0], 2) + Math.pow(endTop[2] - startTop[2], 2));
+                  const beamRotationZ = Math.atan2(endTop[1] - startTop[1], horizontalDistance);
+                  
+                  return (
+                    <mesh 
+                      key={`cross-beam-${crossIndex}`}
+                      position={beamCenter}
+                      rotation={[0, beamRotationY, beamRotationZ]}
+                    >
+                      <boxGeometry args={[beamLength, 0.15, 0.2]} />
                       <meshStandardMaterial color={getPostColor()} />
                     </mesh>
                   );
