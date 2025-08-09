@@ -1,6 +1,7 @@
 import React, { Suspense, useRef, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Text } from '@react-three/drei';
+import * as THREE from 'three';
 import { useStore } from '../store/useStore';
 import PatioCover3D from './PatioCover3D';
 
@@ -29,6 +30,7 @@ const Modal3D = () => {
   const {
     posts,
     shadeArea,
+    satelliteImageUrl,
     hide3DView,
     rotation3D,
     rotate3D,
@@ -77,31 +79,37 @@ const Modal3D = () => {
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} />
                 <PatioCover3D />
-                <Grid 
-                  args={[20, 20]} 
-                  position={[0, 0, 0]} 
-                  cellColor="#666666" 
-                  sectionColor="#333333" 
-                />
+                {satelliteImageUrl ? (
+                  // Satellite overlay
+                  <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+                    <planeGeometry args={[20, 20]} />
+                    <meshBasicMaterial>
+                      <primitive 
+                        object={(() => {
+                          const loader = new THREE.TextureLoader();
+                          const texture = loader.load(satelliteImageUrl);
+                          texture.wrapS = THREE.ClampToEdgeWrapping;
+                          texture.wrapT = THREE.ClampToEdgeWrapping;
+                          return texture;
+                        })()} 
+                        attach="map" 
+                      />
+                    </meshBasicMaterial>
+                  </mesh>
+                ) : (
+                  // Default grid
+                  <Grid 
+                    args={[20, 20]} 
+                    position={[0, 0, 0]} 
+                    cellColor="#666666" 
+                    sectionColor="#333333" 
+                  />
+                )}
                 <CameraController />
               </Suspense>
             </Canvas>
           </div>
           
-          <div className="view-controls">
-            <button onClick={() => rotate3D(-15)} className="btn-secondary">
-              ↻ Rotate Left
-            </button>
-            <button onClick={() => rotate3D(15)} className="btn-secondary">
-              Rotate Right ↺
-            </button>
-            <button onClick={() => setRotation3D(0)} className="btn-secondary">
-              Top View
-            </button>
-            <button onClick={() => setRotation3D(90)} className="btn-secondary">
-              Side View
-            </button>
-          </div>
           
           <div className="view-info">
             <div className="info-item">

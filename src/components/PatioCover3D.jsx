@@ -135,87 +135,51 @@ const PatioCover3D = () => {
           <group>
             {pergolaStructure.posts.length >= 4 && (
               <>
-                {/* Connect posts in pairs with angled support beams */}
-                {Array.from({ length: Math.ceil(pergolaStructure.posts.length / 2) }, (_, pairIndex) => {
-                  const startIndex = pairIndex * 2;
-                  const endIndex = startIndex + 1;
-                  if (startIndex >= pergolaStructure.posts.length || endIndex >= pergolaStructure.posts.length) return null;
+                {/* Create 2 main support beams positioned at post locations */}
+                {(() => {
+                  // Sort posts by X position to find left and right post positions
+                  const sortedPosts = [...pergolaStructure.posts].sort((a, b) => a.position[0] - b.position[0]);
+                  const leftPostX = sortedPosts[0].position[0];
+                  const rightPostX = sortedPosts[sortedPosts.length - 1].position[0];
                   
-                  const startPost = pergolaStructure.posts[startIndex];
-                  const endPost = pergolaStructure.posts[endIndex];
+                  return Array.from({ length: 2 }, (_, beamIndex) => {
+                    // Position beams at actual post X coordinates
+                    const beamX = beamIndex === 0 ? leftPostX : rightPostX;
                   
-                  // Connect the tops of the posts
-                  const startTop = [startPost.position[0], startPost.frameHeight, startPost.position[2]];
-                  const endTop = [endPost.position[0], endPost.frameHeight, endPost.position[2]];
+                  // Beams span the full length of shade area following the slope
+                  const startZ = pergolaStructure.shadeArea.corners[0][2];
+                  const endZ = pergolaStructure.shadeArea.corners[2][2];
+                  const centerZ = (startZ + endZ) / 2;
                   
+                  // Calculate heights at start and end positions using same logic as structure
+                  const { minZ, slopeDistance } = pergolaStructure.slopeDirection;
+                  const startZRatio = (startZ - minZ) / slopeDistance;
+                  const endZRatio = (endZ - minZ) / slopeDistance;
+                  const startHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * startZRatio);
+                  const endHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * endZRatio);
+                  const centerHeight = (startHeight + endHeight) / 2;
+                  
+                  // Calculate beam length and rotation to match structure slope
                   const beamLength = Math.sqrt(
-                    Math.pow(endTop[0] - startTop[0], 2) + 
-                    Math.pow(endTop[1] - startTop[1], 2) +
-                    Math.pow(endTop[2] - startTop[2], 2)
+                    Math.pow(pergolaStructure.shadeArea.depth, 2) + 
+                    Math.pow(pergolaStructure.heightDifference, 2)
                   );
+                  // Use negative angle to match the structural slope direction (same as lattice)
+                  const beamAngle = -Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth);
                   
-                  const beamCenter = [
-                    (startTop[0] + endTop[0]) / 2,
-                    (startTop[1] + endTop[1]) / 2,
-                    (startTop[2] + endTop[2]) / 2
-                  ];
-                  
-                  // Calculate rotation for angled beam connecting posts
-                  const beamRotationY = Math.atan2(endTop[2] - startTop[2], endTop[0] - startTop[0]);
-                  const horizontalDistance = Math.sqrt(Math.pow(endTop[0] - startTop[0], 2) + Math.pow(endTop[2] - startTop[2], 2));
-                  const beamRotationZ = Math.atan2(endTop[1] - startTop[1], horizontalDistance);
-                  
-                  return (
-                    <mesh 
-                      key={`support-beam-${pairIndex}`}
-                      position={beamCenter}
-                      rotation={[0, beamRotationY, beamRotationZ]}
-                    >
-                      <boxGeometry args={[beamLength, 0.15, 0.2]} />
-                      <meshStandardMaterial color={getPostColor()} />
-                    </mesh>
-                  );
-                })}
+                    return (
+                      <mesh 
+                        key={`main-beam-${beamIndex}`}
+                        position={[beamX, centerHeight, centerZ]}
+                        rotation={[beamAngle, 0, 0]}
+                      >
+                        <boxGeometry args={[0.2, 0.15, beamLength]} />
+                        <meshStandardMaterial color={getPostColor()} />
+                      </mesh>
+                    );
+                  });
+                })()}
 
-                {/* Cross beams connecting the other pair of posts */}
-                {pergolaStructure.posts.length >= 4 && Array.from({ length: Math.ceil(pergolaStructure.posts.length / 2) - 1 }, (_, crossIndex) => {
-                  const startIndex = crossIndex;
-                  const endIndex = crossIndex + 2;
-                  if (endIndex >= pergolaStructure.posts.length) return null;
-                  
-                  const startPost = pergolaStructure.posts[startIndex];
-                  const endPost = pergolaStructure.posts[endIndex];
-                  
-                  const startTop = [startPost.position[0], startPost.frameHeight, startPost.position[2]];
-                  const endTop = [endPost.position[0], endPost.frameHeight, endPost.position[2]];
-                  
-                  const beamLength = Math.sqrt(
-                    Math.pow(endTop[0] - startTop[0], 2) + 
-                    Math.pow(endTop[1] - startTop[1], 2) +
-                    Math.pow(endTop[2] - startTop[2], 2)
-                  );
-                  
-                  const beamCenter = [
-                    (startTop[0] + endTop[0]) / 2,
-                    (startTop[1] + endTop[1]) / 2,
-                    (startTop[2] + endTop[2]) / 2
-                  ];
-                  
-                  const beamRotationY = Math.atan2(endTop[2] - startTop[2], endTop[0] - startTop[0]);
-                  const horizontalDistance = Math.sqrt(Math.pow(endTop[0] - startTop[0], 2) + Math.pow(endTop[2] - startTop[2], 2));
-                  const beamRotationZ = Math.atan2(endTop[1] - startTop[1], horizontalDistance);
-                  
-                  return (
-                    <mesh 
-                      key={`cross-beam-${crossIndex}`}
-                      position={beamCenter}
-                      rotation={[0, beamRotationY, beamRotationZ]}
-                    >
-                      <boxGeometry args={[beamLength, 0.15, 0.2]} />
-                      <meshStandardMaterial color={getPostColor()} />
-                    </mesh>
-                  );
-                })}
               </>
             )}
           </group>
@@ -317,7 +281,7 @@ const PatioCover3D = () => {
                   })}
                 </group>
               ) : (
-                // Aluminum: angled solid surface matching structural slope
+                // Aluminum: angled solid surface matching structural slope (same as lattice)
                 <mesh 
                   position={[
                     pergolaStructure.shadeArea.center[0],
@@ -325,7 +289,7 @@ const PatioCover3D = () => {
                     pergolaStructure.shadeArea.center[2]
                   ]}
                   rotation={[
-                    -Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth),
+                    -Math.PI/2 + (-Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth)),
                     0,
                     0
                   ]}
