@@ -257,26 +257,27 @@ const PatioCover3D = () => {
               {coverType === 'lattice' ? (
                 // Lattice: slats following the angled structure
                 <group>
-                  {/* Vertical lattice slats (span width, follow angle) */}
+                  {/* Vertical lattice slats (span width, follow same angle as structure) */}
                   {Array.from({ length: Math.floor(pergolaStructure.shadeArea.width * 4) + 1 }, (_, i) => {
                     const xPos = pergolaStructure.shadeArea.center[0] - pergolaStructure.shadeArea.width/2 + (i * pergolaStructure.shadeArea.width / Math.floor(pergolaStructure.shadeArea.width * 4));
                     
-                    // Calculate start and end heights for this vertical slat
+                    // Use the same angle calculation as the structure
                     const { minZ, maxZ, slopeDistance } = pergolaStructure.slopeDirection;
                     const startZ = pergolaStructure.shadeArea.corners[0][2];
                     const endZ = pergolaStructure.shadeArea.corners[2][2];
                     const centerZ = (startZ + endZ) / 2;
                     
-                    const startHeight = pergolaStructure.baseFrameHeight + 0.15;
-                    const endHeight = pergolaStructure.baseFrameHeight + pergolaStructure.heightDifference + 0.15;
-                    const centerHeight = (startHeight + endHeight) / 2;
+                    // Calculate center height at this Z position
+                    const zRatio = (centerZ - minZ) / slopeDistance;
+                    const centerHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * zRatio) + 0.15;
                     
                     const slatLength = Math.sqrt(
                       Math.pow(pergolaStructure.shadeArea.depth, 2) + 
                       Math.pow(pergolaStructure.heightDifference, 2)
                     );
                     
-                    const slatAngle = Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth);
+                    // Use negative angle to match the structural slope direction
+                    const slatAngle = -Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth);
                     
                     return (
                       <mesh 
@@ -315,7 +316,7 @@ const PatioCover3D = () => {
                   })}
                 </group>
               ) : (
-                // Aluminum: angled solid surface
+                // Aluminum: angled solid surface matching structural slope
                 <mesh 
                   position={[
                     pergolaStructure.shadeArea.center[0],
@@ -323,7 +324,7 @@ const PatioCover3D = () => {
                     pergolaStructure.shadeArea.center[2]
                   ]}
                   rotation={[
-                    Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth),
+                    -Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth),
                     0,
                     0
                   ]}
