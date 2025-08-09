@@ -131,31 +131,43 @@ const PatioCover3D = () => {
       {/* Pergola Structure */}
       {pergolaStructure && posts.length >= 4 && (
         <group>
-          {/* Main support beams spanning width of shade area */}
+          {/* Main support beams running lengthwise and sitting on post tops */}
           <group>
             {pergolaStructure.posts.length >= 4 && (
               <>
-                {/* Create 2 main support beams that span the full width */}
+                {/* Create 2 main support beams that run the length (depth) and sit on posts */}
                 {Array.from({ length: 2 }, (_, beamIndex) => {
-                  // Position beams at front and back of shade area
-                  const beamZRatio = beamIndex; // 0 for front beam, 1 for back beam
-                  const beamZ = pergolaStructure.shadeArea.corners[0][2] + (beamZRatio * pergolaStructure.shadeArea.depth);
+                  // Position beams at left and right sides of shade area
+                  const beamXRatio = beamIndex; // 0 for left beam, 1 for right beam  
+                  const beamX = pergolaStructure.shadeArea.center[0] - pergolaStructure.shadeArea.width/2 + (beamXRatio * pergolaStructure.shadeArea.width);
                   
-                  // Calculate height at this Z position
+                  // Calculate start and end points along the depth (following the slope)
+                  const startZ = pergolaStructure.shadeArea.corners[0][2];
+                  const endZ = pergolaStructure.shadeArea.corners[2][2];
+                  const centerZ = (startZ + endZ) / 2;
+                  
+                  // Calculate heights at start and end positions
                   const { minZ, slopeDistance } = pergolaStructure.slopeDirection;
-                  const zRatio = (beamZ - minZ) / slopeDistance;
-                  const beamHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * zRatio);
+                  const startZRatio = (startZ - minZ) / slopeDistance;
+                  const endZRatio = (endZ - minZ) / slopeDistance;
+                  const startHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * startZRatio);
+                  const endHeight = pergolaStructure.baseFrameHeight + (pergolaStructure.heightDifference * endZRatio);
+                  const centerHeight = (startHeight + endHeight) / 2;
+                  
+                  // Calculate beam length and rotation
+                  const beamLength = Math.sqrt(
+                    Math.pow(pergolaStructure.shadeArea.depth, 2) + 
+                    Math.pow(pergolaStructure.heightDifference, 2)
+                  );
+                  const beamAngle = Math.atan2(pergolaStructure.heightDifference, pergolaStructure.shadeArea.depth);
                   
                   return (
                     <mesh 
                       key={`main-beam-${beamIndex}`}
-                      position={[
-                        pergolaStructure.shadeArea.center[0],
-                        beamHeight,
-                        beamZ
-                      ]}
+                      position={[beamX, centerHeight, centerZ]}
+                      rotation={[beamAngle, 0, 0]}
                     >
-                      <boxGeometry args={[pergolaStructure.shadeArea.width, 0.12, 0.2]} />
+                      <boxGeometry args={[0.2, 0.12, beamLength]} />
                       <meshStandardMaterial color={getPostColor()} />
                     </mesh>
                   );
