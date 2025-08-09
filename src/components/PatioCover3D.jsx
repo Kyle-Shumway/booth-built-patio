@@ -176,45 +176,6 @@ const PatioCover3D = () => {
                   );
                 })}
 
-                {/* Cross beams connecting opposite corners */}
-                {pergolaStructure.posts.length >= 4 && Array.from({ length: 2 }, (_, crossIndex) => {
-                  const startIndex = crossIndex;
-                  const endIndex = crossIndex + 2;
-                  if (endIndex >= pergolaStructure.posts.length) return null;
-                  
-                  const startPost = pergolaStructure.posts[startIndex];
-                  const endPost = pergolaStructure.posts[endIndex];
-                  
-                  const startTop = [startPost.position[0], startPost.frameHeight, startPost.position[2]];
-                  const endTop = [endPost.position[0], endPost.frameHeight, endPost.position[2]];
-                  
-                  const beamLength = Math.sqrt(
-                    Math.pow(endTop[0] - startTop[0], 2) + 
-                    Math.pow(endTop[1] - startTop[1], 2) +
-                    Math.pow(endTop[2] - startTop[2], 2)
-                  );
-                  
-                  const beamCenter = [
-                    (startTop[0] + endTop[0]) / 2,
-                    (startTop[1] + endTop[1]) / 2,
-                    (startTop[2] + endTop[2]) / 2
-                  ];
-                  
-                  const beamRotationY = Math.atan2(endTop[2] - startTop[2], endTop[0] - startTop[0]);
-                  const horizontalDistance = Math.sqrt(Math.pow(endTop[0] - startTop[0], 2) + Math.pow(endTop[2] - startTop[2], 2));
-                  const beamRotationZ = Math.atan2(endTop[1] - startTop[1], horizontalDistance);
-                  
-                  return (
-                    <mesh 
-                      key={`cross-beam-${crossIndex}`}
-                      position={beamCenter}
-                      rotation={[0, beamRotationY, beamRotationZ]}
-                    >
-                      <boxGeometry args={[beamLength, 0.1, 0.15]} />
-                      <meshStandardMaterial color={getPostColor()} />
-                    </mesh>
-                  );
-                })}
               </>
             )}
           </group>
